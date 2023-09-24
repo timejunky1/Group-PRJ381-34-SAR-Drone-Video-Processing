@@ -58,3 +58,4 @@ C:\Users\sjaco\Programming\Group PRJ381-34 Milestone 2\Code\User Interface (C#)\
 C:\Users\sjaco\Programming\Group PRJ381-34 Milestone 2\Code\User Interface (C#)\bin\Debug\System.Text.Json.xml
 C:\Users\sjaco\Programming\Group PRJ381-34 Milestone 2\Code\User Interface (C#)\bin\Debug\System.Threading.Tasks.Extensions.xml
 C:\Users\sjaco\Programming\Group PRJ381-34 Milestone 2\Code\User Interface (C#)\bin\Debug\System.ValueTuple.xml
+C:\Users\sjaco\Programming\Group PRJ381-34 Milestone 2\Code\User Interface (C#)\obj\Debug\Infrared_Drone_Human_Detection_System.Form2.resources

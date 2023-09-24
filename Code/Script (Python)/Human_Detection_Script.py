@@ -36,6 +36,21 @@ except ImportError:
     install_package('matplotlib')
 
 try:
+    import pickle  
+except ImportError:
+    install_package('pickle')
+
+try:
+    import tensorflow  
+except ImportError:
+    install_package('tensorflow')
+
+try:
+    import keras  
+except ImportError:
+    install_package('keras')
+
+try:
     import IPython  
 except ImportError:
     install_package('IPython')
@@ -50,6 +65,12 @@ import matplotlib.pyplot as plt
 import cv2
 import sys
 import json
+import pickle
+import tensorflow as tf
+from tensorflow import keras
+
+print(tf.__version__)
+print(keras.__package__)
 
 if display_output:
     from IPython.display import display, clear_output
@@ -60,8 +81,11 @@ if display_output:
 
 if len(sys.argv) > 1:
     video_file_path = sys.argv[1]
+    useModel = sys.argv[2]
 else:
     video_file_path = "test video.mp4"  # default path
+
+useModel = False
 
 # Checking if the file exists and printing its size:
 if os.path.exists(video_file_path):
@@ -69,8 +93,6 @@ if os.path.exists(video_file_path):
     if display_output: print(f"Loaded video file '{video_file_path}' with size: {file_size:.2f} MB successfully.")
 else:
     if display_output: print(f"Video file '{video_file_path}' not found!")
-    
-    
 
 # ## 4. Modify Video Length to Account for Minor Inconsistencies:
 
@@ -252,6 +274,60 @@ for block, cropped_frame in cropped_frames.items():
 # Initializing global counter for total humans detected across all images:
 total_detected_humans = 0
 
+def masking(img):
+    #Image Colour Conversion
+    try:
+        rbg_img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+        hsv_img = cv2.cvtColor(rbg_img, cv2.COLOR_RGB2HSV)
+        lower = np.array([0, 150, 50])
+        upper = np.array([35, 255, 255])
+        mask = cv2.inRange(hsv_img, lower, upper)
+        filtered_img = cv2.bitwise_and(rbg_img, rbg_img, mask=mask)
+    except:
+        filtered_img = img
+        print("Problem")
+        
+    return filtered_img
+
+with open('model.pkl', 'rb') as f:
+        model = pickle.load(f)
+
+def Predict(img):
+    class_names = ['Human', 'Non Human']
+    img_array = tf.keras.utils.img_to_array(img)
+    img_array = tf.expand_dims(img_array, 0) # Create a batch
+    predictions = model.predict(img_array)
+    score = tf.nn.softmax(predictions[0])
+    
+    identification = class_names[np.argmax(score)]
+    
+    return(identification)
+
+def cropping(x, y, width, height, sectioningRatio, cropSize, img):
+    
+    addition = 0
+    
+    location = (x, y)
+    dist =np.max([height, width])
+    
+    if(dist < cropSize):
+        addition = round((cropSize-dist)/2)
+    
+    maxY = (location[1] + dist)
+    minY = (location[1])
+    maxX = (location[0] + dist)
+    minX = (location[0])          
+                
+    maxY = maxY*sectioningRatio+addition
+    minY = minY*sectioningRatio-addition
+    maxX = maxX*sectioningRatio+addition
+    minX = minX*sectioningRatio-addition
+    
+    croppedImg = img[minY: maxY,minX: maxX]
+    croppedImg = cv2.resize(croppedImg, (363, 363))
+    
+    return croppedImg
+
 def detect_humans(image):
     global total_detected_humans  # Declare the global variable to modify it
 
@@ -259,17 +335,9 @@ def detect_humans(image):
     hsv = cv2.cvtColor(image, cv2.COLOR_BGR2HSV)
 
     # Defining the color range for red/orange/yellow:
-    lower_red_1 = np.array([0, 100, 100])
-    upper_red_1 = np.array([10, 255, 255])
-    lower_red_2 = np.array([160, 100, 100])
-    upper_red_2 = np.array([180, 255, 255])
-    lower_yellow = np.array([20, 100, 100])
-    upper_yellow = np.array([40, 255, 255])
-
-    mask1 = cv2.inRange(hsv, lower_red_1, upper_red_1)
-    mask2 = cv2.inRange(hsv, lower_red_2, upper_red_2)
-    mask3 = cv2.inRange(hsv, lower_yellow, upper_yellow)
-    mask = mask1 + mask2 + mask3
+    lower = np.array([0, 150, 50])
+    upper = np.array([35, 255, 255])
+    mask = cv2.inRange(hsv, lower, upper)
 
     # Using morphology to remove noise:
     kernel = np.ones((5, 5), np.uint8)
@@ -295,6 +363,7 @@ def detect_humans(image):
         avg_height = 0
 
     # Merging overlapping or close boxes:
+    results = []
     merged_boxes = []
 
     for i, (x1, y1, x2, y2) in enumerate(bounding_boxes):
@@ -315,16 +384,26 @@ def detect_humans(image):
 
         if not merged:
             merged_boxes.append((x1, y1, x2, y2))
+    
+    if(useModel == True):
+        filtered_img = masking(image)
+        for j, (x, y, w, h) in enumerate(merged_boxes):
+            cropped_image = cropping(x, y, w, h, 1, 100, filtered_img)
+            result = Predict(cropped_image)
+            if(result == "Human"):
+                results.append((x, y, w, h))
+    else:
+        results = merged_boxes
 
     # Drawing the merged bounding boxes on the image:
-    for (x1, y1, x2, y2) in merged_boxes:
+    for (x1, y1, x2, y2) in results:
         cv2.rectangle(image, (x1, y1), (x2, y2), (0, 255, 0), 2)
 
     # Updating the total number of detected humans:
     num_detected_humans = len(merged_boxes)
     total_detected_humans += num_detected_humans
 
-    return image, merged_boxes
+    return image, results
 
 
 

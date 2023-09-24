@@ -16,7 +16,8 @@ namespace Infrared_Drone_Human_Detection_System
 		public Results()
 		{
 			InitializeComponent();
-		}
+            this.FormBorderStyle = FormBorderStyle.None;
+        }
 
 		private void btnExit_Click(object sender, EventArgs e)
 		{

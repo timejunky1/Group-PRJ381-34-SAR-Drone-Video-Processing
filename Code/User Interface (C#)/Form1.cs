@@ -14,101 +14,20 @@ namespace Infrared_Drone_Human_Detection_System
 {
 	public partial class Form1 : Form
 	{
-		Results results = new Results();
-		ScriptExecutioner se = new ScriptExecutioner();
+		Form2 setup = new Form2 ();
 
 		public Form1()
 		{
 			InitializeComponent();
-			this.FormBorderStyle = FormBorderStyle.FixedSingle;
+			this.FormBorderStyle = FormBorderStyle.None;
 			this.MaximizeBox = false;
 			this.MinimizeBox = false;
-			results.Hide();
+			setup.Hide();
 		}
 
 		private void btnUpload_Click(object sender, EventArgs e)
 		{
-			Video.Title = "Select an MP4 Video File";
-			//Filter for the OpenFileDialog to only allow .mp4 files
-			Video.Filter = "MP4 files (*.mp4)|*.mp4";
-
-			// Existing code for opening the file dialog
-			if (Video.ShowDialog() == DialogResult.OK)
-			{
-				// Check if the selected file is an .mp4 file
-				string videoFilePath = Video.FileName;
-				string fileExtension = Path.GetExtension(videoFilePath);
-
-				if (fileExtension.ToLower() != ".mp4")
-				{
-					MessageBox.Show("Please upload an MP4 file.", "Invalid File Type", MessageBoxButtons.OK, MessageBoxIcon.Error);
-					return; // Exit early if the file is not an MP4
-				}
-
-				// Reset the label text and make it visible
-				lblProcessing.Text = "Video processing...";
-				lblProcessing.Visible = true;
-
-				// Set the CONTEXT environment variable to 'APP'
-				Environment.SetEnvironmentVariable("CONTEXT", "APP");
-
-				// Refresh the form to reflect the label changes
-				this.Refresh();
-
-				// Existing code for running the Python script
-				se.setpath("Human_Detection_Script.py");
-				se.SetPerams(videoFilePath);
-				string scriptOutput = se.ExecutePythonScript();
-
-				// Check for any errors from the Python script
-				if (!string.IsNullOrEmpty(scriptOutput))
-				{
-					lblProcessing.Text = "Error uploading video. Please try again and ensure the video is in the correct format.";
-					MessageBox.Show(scriptOutput);
-					return;  // Exit early if there's an error
-				}
-
-				// Existing code for retrieving output from the Python script
-				string imageOutputPath = "humanMap.jpg";
-				string textOutputPath = "locations.txt";
-
-				if (File.Exists(imageOutputPath))
-				{
-					lblProcessing.Visible = false;
-					this.Hide();
-					results.Show();
-
-					using (FileStream stream = new FileStream(imageOutputPath, FileMode.Open))
-					{
-						results.pbMap.Image = new Bitmap(stream);
-					}
-
-					// Delete the image file after processing
-					File.Delete(imageOutputPath);
-				}
-
-				if (File.Exists(textOutputPath))
-				{
-					this.Hide();
-					results.Show();
-
-					if (File.ReadAllText(textOutputPath) == "")
-					{
-						results.rtbOutput.Text = "No humans detected on map.";
-					}
-					else
-					{
-						results.rtbOutput.Text = File.ReadAllText(textOutputPath);
-					}
-
-					// Delete the text file after processing
-					File.Delete(textOutputPath);
-				}
-				else
-				{
-					MessageBox.Show("Text file not found.");
-				}
-			}
+			setup.Show();
 		}
 
 		private void btnDownload_Click(object sender, EventArgs e)
