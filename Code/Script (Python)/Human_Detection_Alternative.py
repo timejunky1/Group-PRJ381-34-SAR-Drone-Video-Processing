@@ -118,29 +118,48 @@ def standard_deviation(values):
         sum+=(pow(i-u, 2)/n)
     return np.sqrt(sum)
 
+def get_equation_value_at_x(x, m, b):
+    return m*x+b
+
 def reject_outliers(data):
+    removed_indexes = []
     result = []
-    if(len(data)>2):
-        mean = np.mean(data)
+    n = len(data)
+    x = [i for i in range(0, n)]
+    if(n>2):
+        xy = [x[i] * data[i] for i in range(0, n)]
+        x_2 = [np.power(i, 2) for i in x]
+        m =  ((n*np.sum(xy))-(np.sum(x)*np.sum(data)))/(n*np.sum(x_2)-np.power(np.sum(x),2))
+        b = (np.sum(data)-m*np.sum(x))/n
         sd = standard_deviation(data)
-        for d in data:
-            if(abs(d-mean)<sd):
-                result.append(d)
+        for i in range(0, len(data)):
+            if abs(data[i]-get_equation_value_at_x(x[i], m, b))<sd/4:
+                result.append(data[i])
+            else:
+                removed_indexes.append(i)
+                
+        best_fit = [get_equation_value_at_x(x_, m, b) for x_ in x]
     else:
-        result = data
+        for i in range(0, len(data)):
+            if data[i] !=0:
+                result.append(data[i])
+            else:
+                removed_indexes.append(i)
+        best_fit = data
+    f_x = [x for x in x if x not in removed_indexes]
 
-    return result
+    return result, x, f_x, best_fit,
 
-def get_coordinates(captured_indexes, turn_end_indexes, turn_directions, starting_direction, y_displacements, compretion):
+def get_coordinates(captured_indexes, turn_end_indexes, turn_directions, starting_direction, y_displacements, compretion, height, width):
         turn_index = 0
-        x = 0
-        y = 0
+        x = round(width/2)
+        y = round(height/2)
         direction = starting_direction
         directions = []
         locations = []
         step = 0
-        if(display_output == True):
-            plt.figure(figsize=(10,10))
+        if(display == True):
+            plt.figure(figsize=(10,15))
 
         for i in range(0, len(captured_indexes)):
             for t in range(len(turn_end_indexes)-1, -1, -1):
@@ -151,29 +170,31 @@ def get_coordinates(captured_indexes, turn_end_indexes, turn_directions, startin
                     break
             last_point = np.max([turn_index, captured_indexes[i-1]])
             sample = y_displacements[last_point: captured_indexes[i]]
+            smoothed_sample, xs, f_x, best_fit  = reject_outliers(sample)
 
-            smoothed_sample = reject_outliers(sample)
-
-            if(display_output == True):
+            if(display == True):
                 plt.subplot(5,5,i+1)
-                xs = [n for n in range(0,len(sample))]
+                plt.title(f"{direction}")
                 plt.plot(xs, sample)
                 plt.scatter(xs, sample)
-                xs = [n for n in range(0,len(smoothed_sample))]
-                plt.plot(xs, smoothed_sample)
-                plt.scatter(xs, smoothed_sample)
+                plt.plot(f_x, smoothed_sample)
+                plt.scatter(f_x, smoothed_sample)
+                plt.plot(xs, best_fit)
 
             if(len(smoothed_sample) > 0):
-                step = np.mean(smoothed_sample) * compretion
-            else:
-                step = 0
+                step = np.mean(smoothed_sample)*compretion
+                
                 
             x += (captured_indexes[i] - last_point) * step * direction[0]
             y += (captured_indexes[i] - last_point) * step * direction[1]
+            print(f"Step: {step}")
+            print(x,y)
+            #x+=np.sum(smoothed_sample) * direction[0] * compretion
+            #y+=np.sum(smoothed_sample) * direction[1] * compretion
             locations.append((x,y))
             directions.append(direction)
             
-        if(display_output == True):    
+        if(display == True):    
             plt.show()
 
         return [locations, directions]
@@ -256,6 +277,8 @@ def process_pictures(path, compretion, noise_limit, normal_limit, turn_min_frame
         success, img = vidcap.read()
         #saving the last successful picture
         if(not success):
+            location = (lastX,y) 
+            all_locations.append(location)
             saved_images['i'].append(count)
             saved_images['img'].append(last_img)
         try:
@@ -340,8 +363,46 @@ def process_pictures(path, compretion, noise_limit, normal_limit, turn_min_frame
         
         count += 1
 
+    if(display_output):
+        plt.figure(figsize=(10,100))
+        xs = []
+        ys = []
+        for i in range(0, len(all_locations)):
+            xs.append(all_locations[i][0])
+            ys.append(all_locations[i][1])
+        plt.plot(xs,ys)
+        plt.scatter(xs,ys)
+        xs = []
+        ys = []
+        for i in range(0, len(smoothed_out_locations)):
+            xs.append(smoothed_out_locations[i][0])
+            ys.append(smoothed_out_locations[i][1])
+        plt.plot(xs,ys,)
+        plt.scatter(xs,ys)
+        xs = []
+        ys = []
+        for i in turn_indexes:
+            xs.append(all_locations[i][0])
+            ys.append(all_locations[i][1])
+        plt.scatter(xs,ys)
+        print(len(xs))
+        print(len(ys))
+        xs = []
+        ys = []
+        for i in saved_images['i']:
+            xs.append(all_locations[i][0])
+            ys.append(all_locations[i][1])
+        plt.plot(xs,ys)
+        xs = []
+        ys = []
+        for i in turn_transition_indexes:
+            xs.append(smoothed_out_locations[i][0])
+            ys.append(smoothed_out_locations[i][1])
+        plt.plot(xs,ys)
+        plt.scatter(xs,ys)
+        plt.show
     
-    locations, directions = get_coordinates(saved_images['i'], turn_ends, turn_directions[1:],turn_directions[0], y_displacements['v'], compretion)
+    locations, directions = get_coordinates(saved_images['i'], turn_ends, turn_directions[1:],turn_directions[0], y_displacements['v'], compretion, height, width)
 
     if(display_output == True):
         plt.figure(figsize=(10,20))
@@ -361,19 +422,19 @@ def process_pictures(path, compretion, noise_limit, normal_limit, turn_min_frame
     return width, height, frames, locations, directions
 
 #fetching the flight directions from a file or initialising it to a default
-flight_directions = []
+turn_directions = []
 try:
     with open("directions.txt") as file:
         for line in file.readlines():
-            flight_directions.append(line.strip()[1,-2])
+            turn_directions.append(line.strip()[1,-2])
 
-    flight_directions = [d.split(",") for d in flight_directions]
+    flight_directions = [d.split(",") for d in turn_directions]
     flight_directions = [(d[0],d[1]) for d in flight_directions]
 
 except:
     flight_directions = [(0,1),(-1,0),(0,-1),(-1,0),(0,1)]
 
-width, height, captured_frames, locations, frame_directions = process_pictures('Alternative_Animals_Humans.mp4', 2, 5, 1, 5,flight_directions)
+width, height, captured_frames, locations, frame_directions = process_pictures('Alternative_Only_Humans.mp4', 2, 5, 1, 8,flight_directions)
 
 
 # Displaying cropped frames:
@@ -391,8 +452,12 @@ for img in captured_frames:
 total_detected_humans = 0
 
 #fetching human detection model
-with open('model.pkl', 'rb') as f:
+try:
+    with open('model.pkl', 'rb') as f:
         model = pickle.load(f)
+except:
+    print("Can not load machine learning model")
+    useModel = False
 
 def Predict(img):
     class_names = ['Human', 'Non Human']
@@ -524,15 +589,18 @@ if display_output: print(f"Total number of humans: {total_detected_humans}")
 
 # ## 13. Calculate Entire Map's Dimensions:
 x_span = [location[0] for location in locations]
-y_span = [locations[1] for location in locations]
-max_x = np.max(x_span) + np.max([width, height])
-min_x = np.min(x_span) - np.max([width, height])
-max_y = np.max(y_span) + np.max([width, height])
-min_y = np.min(y_span) - np.max([width, height])
+y_span = [location[1] for location in locations]
+max_x = round(np.max(x_span) + np.max([width/2, height/2]))
+min_x = round(np.min(x_span) - np.max([width/2, height/2]))
+max_y = round(np.max(y_span) + np.max([width/2, height/2]))
+min_y = round(np.min(y_span) - np.max([width/2, height/2]))
 total_width = round(max_x - min_x)
 total_height = round(max_y - min_y)
 x_offset = 0-min_x
 y_offset = 0-min_y
+
+global_locations = []
+map_image = np.zeros((total_height, total_width, 3), dtype=np.uint8)
 
 
 if display_output: print(f"Map dimensions: Width = {total_width} pixels, Height = {total_height} pixels")
@@ -591,9 +659,6 @@ def draw_section(img, fx, fy, direction):
 
         map_image[y1:y2, x1:x2] = reconstructed_img
 
-global_locations = []
-map_image = np.zeros((total_height, total_width, 3), dtype=np.uint8)
-
 #calculating global locations
 for i in range(0, len(captured_frames)):
     f_locations = []
@@ -614,9 +679,9 @@ for i in range(0, len(captured_frames)):
     draw_section(processed_frame, fx, fy, direction)
 
 for i in range(0, len(global_locations)):
-    label = str(i + 1)
+    label = str(i+1)
     text_size = cv2.getTextSize(label, cv2.FONT_HERSHEY_COMPLEX, 5, 2)[0]
-    label_position = (global_locations[i][0]+x_offset, global_locations[i][1] + y_offset)
+    label_position = (round(global_locations[i][0] + x_offset), total_height-(round(global_locations[i][1] + y_offset)))
     cv2.putText(map_image, label, label_position, cv2.FONT_HERSHEY_COMPLEX, 5, (0, 255, 0), 2, cv2.LINE_AA)
 
 # ## 14. Reconstruct Entire Map and Convert Bounding Box Coordinates:
