@@ -48,11 +48,11 @@
             this.btnCancel = new System.Windows.Forms.Button();
             this.lblProcessing = new System.Windows.Forms.Label();
             this.groupBox2 = new System.Windows.Forms.GroupBox();
-            this.left = new System.Windows.Forms.RadioButton();
-            this.forward = new System.Windows.Forms.RadioButton();
-            this.back = new System.Windows.Forms.RadioButton();
-            this.right = new System.Windows.Forms.RadioButton();
             this.lblDirection = new System.Windows.Forms.Label();
+            this.right = new System.Windows.Forms.RadioButton();
+            this.back = new System.Windows.Forms.RadioButton();
+            this.forward = new System.Windows.Forms.RadioButton();
+            this.left = new System.Windows.Forms.RadioButton();
             ((System.ComponentModel.ISupportInitialize)(this.pictureBox1)).BeginInit();
             this.groupBox1.SuspendLayout();
             this.groupBox2.SuspendLayout();
@@ -289,38 +289,16 @@
             this.groupBox2.TabIndex = 21;
             this.groupBox2.TabStop = false;
             // 
-            // left
+            // lblDirection
             // 
-            this.left.AutoSize = true;
-            this.left.Location = new System.Drawing.Point(6, 45);
-            this.left.Name = "left";
-            this.left.Size = new System.Drawing.Size(14, 13);
-            this.left.TabIndex = 14;
-            this.left.TabStop = true;
-            this.left.UseVisualStyleBackColor = true;
-            this.left.CheckedChanged += new System.EventHandler(this.left_CheckedChanged);
-            // 
-            // forward
-            // 
-            this.forward.AutoSize = true;
-            this.forward.Location = new System.Drawing.Point(31, 20);
-            this.forward.Name = "forward";
-            this.forward.Size = new System.Drawing.Size(14, 13);
-            this.forward.TabIndex = 15;
-            this.forward.TabStop = true;
-            this.forward.UseVisualStyleBackColor = true;
-            this.forward.CheckedChanged += new System.EventHandler(this.forward_CheckedChanged);
-            // 
-            // back
-            // 
-            this.back.AutoSize = true;
-            this.back.Location = new System.Drawing.Point(31, 69);
-            this.back.Name = "back";
-            this.back.Size = new System.Drawing.Size(14, 13);
-            this.back.TabIndex = 16;
-            this.back.TabStop = true;
-            this.back.UseVisualStyleBackColor = true;
-            this.back.CheckedChanged += new System.EventHandler(this.back_CheckedChanged);
+            this.lblDirection.AutoSize = true;
+            this.lblDirection.Font = new System.Drawing.Font("Microsoft Sans Serif", 15.75F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            this.lblDirection.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(0)))), ((int)(((byte)(192)))), ((int)(((byte)(0)))));
+            this.lblDirection.Location = new System.Drawing.Point(76, 20);
+            this.lblDirection.Name = "lblDirection";
+            this.lblDirection.Size = new System.Drawing.Size(56, 25);
+            this.lblDirection.TabIndex = 18;
+            this.lblDirection.Text = "(0,0)";
             // 
             // right
             // 
@@ -333,16 +311,38 @@
             this.right.UseVisualStyleBackColor = true;
             this.right.CheckedChanged += new System.EventHandler(this.right_CheckedChanged);
             // 
-            // lblDirection
+            // back
             // 
-            this.lblDirection.AutoSize = true;
-            this.lblDirection.Font = new System.Drawing.Font("Microsoft Sans Serif", 15.75F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
-            this.lblDirection.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(0)))), ((int)(((byte)(192)))), ((int)(((byte)(0)))));
-            this.lblDirection.Location = new System.Drawing.Point(76, 20);
-            this.lblDirection.Name = "lblDirection";
-            this.lblDirection.Size = new System.Drawing.Size(56, 25);
-            this.lblDirection.TabIndex = 18;
-            this.lblDirection.Text = "(0,0)";
+            this.back.AutoSize = true;
+            this.back.Location = new System.Drawing.Point(31, 69);
+            this.back.Name = "back";
+            this.back.Size = new System.Drawing.Size(14, 13);
+            this.back.TabIndex = 16;
+            this.back.TabStop = true;
+            this.back.UseVisualStyleBackColor = true;
+            this.back.CheckedChanged += new System.EventHandler(this.back_CheckedChanged);
+            // 
+            // forward
+            // 
+            this.forward.AutoSize = true;
+            this.forward.Location = new System.Drawing.Point(31, 20);
+            this.forward.Name = "forward";
+            this.forward.Size = new System.Drawing.Size(14, 13);
+            this.forward.TabIndex = 15;
+            this.forward.TabStop = true;
+            this.forward.UseVisualStyleBackColor = true;
+            this.forward.CheckedChanged += new System.EventHandler(this.forward_CheckedChanged);
+            // 
+            // left
+            // 
+            this.left.AutoSize = true;
+            this.left.Location = new System.Drawing.Point(6, 45);
+            this.left.Name = "left";
+            this.left.Size = new System.Drawing.Size(14, 13);
+            this.left.TabIndex = 14;
+            this.left.TabStop = true;
+            this.left.UseVisualStyleBackColor = true;
+            this.left.CheckedChanged += new System.EventHandler(this.left_CheckedChanged);
             // 
             // Form2
             // 
@@ -350,6 +350,7 @@
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
             this.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(32)))), ((int)(((byte)(32)))), ((int)(((byte)(32)))));
             this.ClientSize = new System.Drawing.Size(620, 322);
+            this.Controls.Add(this.desclabel);
             this.Controls.Add(this.groupBox2);
             this.Controls.Add(this.lblProcessing);
             this.Controls.Add(this.btnCancel);
@@ -358,7 +359,6 @@
             this.Controls.Add(this.label1);
             this.Controls.Add(this.pictureBox1);
             this.Controls.Add(this.btnProcess);
-            this.Controls.Add(this.desclabel);
             this.Name = "Form2";
             this.StartPosition = System.Windows.Forms.FormStartPosition.CenterScreen;
             this.Text = "Form2";

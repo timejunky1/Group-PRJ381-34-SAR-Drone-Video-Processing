@@ -32,6 +32,13 @@ namespace Infrared_Drone_Human_Detection_System
             comboBox1.DataSource = new List<string>() { "Demo With Auto Piloting", "Demo with manual piloting" };
             ready = false;
             lblProcessing.Visible = false;
+            btnAdd.Enabled = false;
+            btnRemove.Enabled = false;
+            listBox1.Enabled = false;
+            left.Enabled = false;
+            forward.Enabled = false;
+            right.Enabled = false;
+            back.Enabled = false;
         }
 
         private void label4_Click(object sender, EventArgs e)
@@ -131,14 +138,34 @@ namespace Infrared_Drone_Human_Detection_System
             se.SetPerams(videoFilePath, useModel);
             string scriptOutput = se.ExecutePythonScript();
 
+            bool done = false;
+            string s = "";
+            while (!done)
+            {
+                using (FileStream stream = new FileStream("progress.txt", FileMode.Open))
+                {
+                    using (StreamReader sr = new StreamReader(stream))
+                    {
+                        s = sr.ReadLine();
+                        lblProcessing.Text = s;
+                        if (s.Contains("Complete"))
+                        {
+                            done = true;
+                        }
+                    }
+                }
+            }
             // Check for any errors from the Python script
             if (!string.IsNullOrEmpty(scriptOutput))
             {
-                //lblProcessing.Text = "Error uploading video. Please try again and ensure the video is in the correct format.";
-                MessageBox.Show(scriptOutput);
-                return;  // Exit early if there's an error
+                using (FileStream stream = new FileStream("scriptOutput", FileMode.Create))
+                {
+                    using (StreamWriter sw = new StreamWriter(stream))
+                    {
+                        sw.WriteLine(scriptOutput);
+                    }
+                }
             }
-            MessageBox.Show(scriptOutput);
 
             // Existing code for retrieving output from the Python script
 
@@ -188,10 +215,24 @@ namespace Infrared_Drone_Human_Detection_System
             if (comboBox1.SelectedIndex == 0)
             {
                 se.setpath("Human_Detection_Script.py");
+                btnAdd.Enabled = false;
+                btnRemove.Enabled = false;
+                listBox1.Enabled= false;
+                left.Enabled = false;
+                forward.Enabled = false;
+                right.Enabled = false;
+                back.Enabled = false;
             }
             else if (comboBox1.SelectedIndex == 1)
             {
                 se.setpath("Human_Detection_Alternative.py");
+                btnAdd.Enabled = true;
+                btnRemove.Enabled = true;
+                listBox1.Enabled = true;
+                left.Enabled = true;
+                forward.Enabled = true;
+                right.Enabled = true;
+                back.Enabled = true;
             }
         }
 
@@ -211,14 +252,7 @@ namespace Infrared_Drone_Human_Detection_System
             int lastIndex = listBox1.SelectedIndex;
             if (lastIndex == -1)
             {
-                if(listBox1.Items.Count > 0)
-                {
-                    lastIndex = listBox1.Items.Count - 1;
-                }
-                else
-                {
-                    lastIndex = 0;
-                }
+                lastIndex = 0;
             }
             if(lastIndex > 0)
             {
@@ -239,7 +273,15 @@ namespace Infrared_Drone_Human_Detection_System
 
         private void btnRemove_Click(object sender, EventArgs e)
         {
-            listBox1.Items.RemoveAt(listBox1.SelectedIndex);
+            try
+            {
+                listBox1.Items.RemoveAt(listBox1.SelectedIndex);
+            }
+            catch
+            {
+                listBox1.Items.Clear();
+            }
+
         }
 
         private void forward_CheckedChanged(object sender, EventArgs e)

@@ -78,8 +78,6 @@ if len(sys.argv) > 1:
 else:
     video_file_path = "Alternative_Only_Humans.mp4"  # default path
 
-useModel = False
-
 # Checking if the file exists and printing its size:
 if os.path.exists(video_file_path):
     file_size = os.path.getsize(video_file_path) / (1024 * 1024)  # Convert bytes to MB
@@ -87,7 +85,7 @@ if os.path.exists(video_file_path):
 else:
     if display_output: print(f"Video file '{video_file_path}' not found!")
     
-    
+display_output = False
 
 # ## 4. Modify Video Length to Account for Minor Inconsistencies:
 
@@ -108,10 +106,13 @@ def masking(img):
         filtered_img = img
         print("Problem")
         
-    return [filtered_img]
+    return filtered_img
 
 def standard_deviation(values):
-    u = np.mean(values)
+    if(len(values)>0):
+        u = np.mean(values)
+    else:
+        u = 0
     n = len(values)
     sum = 0
     for i in values:
@@ -122,6 +123,10 @@ def get_equation_value_at_x(x, m, b):
     return m*x+b
 
 def reject_outliers(data):
+    try:
+        data.remove(0)
+    except:
+        print("no zero")
     removed_indexes = []
     result = []
     n = len(data)
@@ -133,7 +138,7 @@ def reject_outliers(data):
         b = (np.sum(data)-m*np.sum(x))/n
         sd = standard_deviation(data)
         for i in range(0, len(data)):
-            if abs(data[i]-get_equation_value_at_x(x[i], m, b))<sd/4:
+            if abs(data[i]-get_equation_value_at_x(x[i], m, b))<sd:
                 result.append(data[i])
             else:
                 removed_indexes.append(i)
@@ -158,7 +163,7 @@ def get_coordinates(captured_indexes, turn_end_indexes, turn_directions, startin
         directions = []
         locations = []
         step = 0
-        if(display == True):
+        if(display_output == True):
             plt.figure(figsize=(10,15))
 
         for i in range(0, len(captured_indexes)):
@@ -172,7 +177,7 @@ def get_coordinates(captured_indexes, turn_end_indexes, turn_directions, startin
             sample = y_displacements[last_point: captured_indexes[i]]
             smoothed_sample, xs, f_x, best_fit  = reject_outliers(sample)
 
-            if(display == True):
+            if(display_output == True):
                 plt.subplot(5,5,i+1)
                 plt.title(f"{direction}")
                 plt.plot(xs, sample)
@@ -182,19 +187,19 @@ def get_coordinates(captured_indexes, turn_end_indexes, turn_directions, startin
                 plt.plot(xs, best_fit)
 
             if(len(smoothed_sample) > 0):
-                step = np.mean(smoothed_sample)*compretion
+                step = np.average(smoothed_sample)*compretion
                 
                 
             x += (captured_indexes[i] - last_point) * step * direction[0]
             y += (captured_indexes[i] - last_point) * step * direction[1]
+            #x+=np.sum(best_fit) * direction[0] * compretion
+            #y+=np.sum(best_fit) * direction[1] * compretion
             print(f"Step: {step}")
             print(x,y)
-            #x+=np.sum(smoothed_sample) * direction[0] * compretion
-            #y+=np.sum(smoothed_sample) * direction[1] * compretion
             locations.append((x,y))
             directions.append(direction)
             
-        if(display == True):    
+        if(display_output == True):    
             plt.show()
 
         return [locations, directions]
@@ -246,14 +251,22 @@ def get_indexes(start_index, end_index, resized_img, lastX):
             
     return [start_index, lastX]
 
+def stand_still(past_vals, current_vals):
+    for i in range(0, len(past_vals)):
+        if past_vals[i][0] == current_vals[i][0] and past_vals[i][1] == current_vals[i][2] and past_vals[i][2] == current_vals[i][2]:
+            break
+    else:
+        return 0
 
-def process_pictures(path, compretion, noise_limit, normal_limit, turn_min_frames, turn_directions):
+    return 1
+
+
+def process_pictures(path, compretion, noise_limit, normal_limit, turn_min_frames, flight_directions):
     
     img = []
     saved_images = {'i':[], 'img':[]}
     height = 0
     width = 0
-    displacement = 0
     vidcap = cv2.VideoCapture(path)
     turn_indexes = []
     turn_ends = []
@@ -270,12 +283,14 @@ def process_pictures(path, compretion, noise_limit, normal_limit, turn_min_frame
     old_start_index = 0
     old2_lastX = 0
     direction = (0,1)
-    y_displacements = {'i': [], 'v': []}
-    x_displacements = {'i': [], 'v': []}
+    y_displacements = []
+    x_displacements = []
+    old_corner_vals = [[0,0,0],[0,0,0],[0,0,0],[0,0,0]]
+    corner_vals = []
+    moving = 0
     while success: 
         last_img = img
         success, img = vidcap.read()
-        #saving the last successful picture
         if(not success):
             location = (lastX,y) 
             all_locations.append(location)
@@ -286,16 +301,13 @@ def process_pictures(path, compretion, noise_limit, normal_limit, turn_min_frame
         except:
             break
         
-        #Resizing the picture and getting aray of the indices of the instances using a mask
+
         resized_img = cv2.resize(img, [round(height/compretion), round(width/compretion)])
-        filtered_img = masking(resized_img)[0]
+        filtered_img = masking(resized_img)
         end_index = np.shape(resized_img)[0]-1
         if(count == 0):
             start_index = np.shape(resized_img)[0]-1
-        
-        indices = np.where(filtered_img != [0])
 
-        #calling the method for keeping track of the index and therefor keeping track of the movement of the drone
         start_index, lastX = get_indexes(start_index, end_index, filtered_img, lastX)
 
         y += direction[1]
@@ -303,66 +315,59 @@ def process_pictures(path, compretion, noise_limit, normal_limit, turn_min_frame
 
 
         smoothed_out_locations.append(((lastX + old_lastX)/2,y))
-        #allocating the deplacements to a string for use in determining turns
         if(old_start_index != 0):
-            x_displacements['i'].append(count)
-            x_displacements['v'].append((lastX + old_lastX)/2)
+            x_displacements.append((lastX + old_lastX)/2)
         
-        if(old_start_index != 0 and start_index != end_index):
-            displacement = start_index - old_start_index
-            y_displacements['i'].append(count)
-            y_displacements['v'].append(displacement)
-        else:
-            y_displacements['i'].append(count)
-            y_displacements['v'].append(displacement)
+        y_displacements.append(start_index - old_start_index)
 
         location = (lastX,y) 
         all_locations.append(location)
         
+        corner_vals = [img[0][0], img[0][1], img[-1][0], img[-1][-1]]
+        moving += stand_still(corner_vals, old_corner_vals)
 
         if(start_index != end_index and old_start_index == 0 and start_index != 0):
             location = (lastX,y)
             saved_images['i'].append(count)
             saved_images['img'].append(img)
             
-        #determine under conditions regarding the standard deviation of the past indexes if the drone has turned or not
+
         if(standard_deviation([lastX, old_lastX, old2_lastX]) < normal_limit):
-            if(len(x_displacements['v']) > 1):
-                x_displacements['v'].remove(np.max(x_displacements['v']))
-            std = standard_deviation(x_displacements['v'])
-            if(abs(std) > noise_limit and len(x_displacements['i']) > turn_min_frames):
-                turn_transition_indexes.append(x_displacements['i'][0])
-                turn_transition_indexes.append(x_displacements['i'][-1])
-                turn_ends.append(x_displacements['i'][-1])
-                for i in x_displacements['i']:
-                    turn_indexes.append(i)
+            length = len(x_displacements)
+            if(length > 1):
+                x_displacements.remove(np.max(x_displacements))
+            std = standard_deviation(x_displacements)
+            if(abs(std) > noise_limit and length > turn_min_frames):
+                turn_transition_indexes.append(count-length)
+                turn_transition_indexes.append(count)
+                turn_ends.append(count)
+                turn_indexes.append(count - length)
                 cut_index = 0
                 for i in range (len(saved_images['i'])-1, 0, -1):
-                    if(saved_images['i'][i] < x_displacements['i'][0]):
+                    if(saved_images['i'][i] < count - length):
                         cut_index = i + 1
                         break
                 
                 saved_images['i'] = saved_images['i'][0:cut_index]
                 saved_images['img'] = saved_images['img'][0:cut_index]
-                saved_images['i'].append(x_displacements['i'][0])
+                saved_images['i'].append(count - length)
                 saved_images['img'].append([])
-                saved_images['i'].append(x_displacements['i'][-1])
+                saved_images['i'].append(count)
                 saved_images['img'].append([])
                 start_index = 0
-            x_displacements['i'] = []
-            x_displacements['v'] = []
+            x_displacements = []
             location = (lastX,y)
         
-        #resets the index if it has come to the end
         if(start_index == end_index):
             start_index = 0
         
+        old_corner_vals = [img[0][0], img[0][1], img[-1][0], img[-1][-1]]
         old2_lastX = old_lastX
         old_lastX = lastX
         old_start_index = start_index
         
         count += 1
-
+    print(f'Stand Still: {moving}')
     if(display_output):
         plt.figure(figsize=(10,100))
         xs = []
@@ -401,10 +406,13 @@ def process_pictures(path, compretion, noise_limit, normal_limit, turn_min_frame
         plt.plot(xs,ys)
         plt.scatter(xs,ys)
         plt.show
+
     
-    locations, directions = get_coordinates(saved_images['i'], turn_ends, turn_directions[1:],turn_directions[0], y_displacements['v'], compretion, height, width)
+    locations, directions = get_coordinates(saved_images['i'], turn_ends, flight_directions[1:],flight_directions[0], y_displacements, compretion, height, width)
+    print(locations)
 
     if(display_output == True):
+        
         plt.figure(figsize=(10,20))
         xs = [l[0] for l in locations]
         ys = [l[1] for l in locations]
@@ -426,13 +434,19 @@ turn_directions = []
 try:
     with open("directions.txt") as file:
         for line in file.readlines():
-            turn_directions.append(line.strip()[1,-2])
+            turn_directions.append(line.strip()[0,-1])
+
+    with open("directionsres.txt") as file:    
+        file.writelines(turn_directions)
 
     flight_directions = [d.split(",") for d in turn_directions]
     flight_directions = [(d[0],d[1]) for d in flight_directions]
-
+    
 except:
     flight_directions = [(0,1),(-1,0),(0,-1),(-1,0),(0,1)]
+
+with open('progress.txt', 'w') as f:
+        f.write('Progress: 0% --Started Processing--')
 
 width, height, captured_frames, locations, frame_directions = process_pictures('Alternative_Only_Humans.mp4', 2, 5, 1, 8,flight_directions)
 
@@ -708,3 +722,6 @@ else:
     with open(output_text_path, 'w') as f:
         for i, (x,y) in enumerate(global_locations):
             f.write(f"Human {i + 1} detected with global pixel coordinates: ({x}, {y}).\n")
+
+with open('progress.txt', 'w') as f:
+        f.write('Progress: 100% --Complete--')
