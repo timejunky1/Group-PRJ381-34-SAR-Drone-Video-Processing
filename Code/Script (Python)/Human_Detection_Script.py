@@ -69,23 +69,19 @@ import pickle
 import tensorflow as tf
 from tensorflow import keras
 
-print(tf.__version__)
-print(keras.__package__)
-
 if display_output:
     from IPython.display import display, clear_output
     
     
 
 # ## 3. Allow Video Upload:
-
+useModel = False
 if len(sys.argv) > 1:
-    video_file_path = sys.argv[1]
-    useModel = sys.argv[2]
+    video_file_path, useModel = sys.argv[1].split(",")
+    if(useModel == "False"):
+        useModel = False
 else:
     video_file_path = "test video.mp4"  # default path
-
-useModel = False
 
 # Checking if the file exists and printing its size:
 if os.path.exists(video_file_path):
@@ -93,6 +89,8 @@ if os.path.exists(video_file_path):
     if display_output: print(f"Loaded video file '{video_file_path}' with size: {file_size:.2f} MB successfully.")
 else:
     if display_output: print(f"Video file '{video_file_path}' not found!")
+
+display_output = True
 
 # ## 4. Modify Video Length to Account for Minor Inconsistencies:
 
@@ -285,12 +283,17 @@ def masking(img):
         filtered_img = cv2.bitwise_and(rbg_img, rbg_img, mask=mask)
     except:
         filtered_img = img
-        print("Problem")
+        print("Problem with masking")
         
     return filtered_img
 
-with open('model.pkl', 'rb') as f:
-        model = pickle.load(f)
+if(useModel):
+    try:
+        with open('model.pkl', 'rb') as f:
+            model = pickle.load(f)
+    except:
+        print("Can not load machine learning model")
+        useModel = False
 
 def Predict(img):
     class_names = ['Human', 'Non Human']

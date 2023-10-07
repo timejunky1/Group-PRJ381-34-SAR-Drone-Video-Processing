@@ -22,14 +22,9 @@ namespace Infrared_Drone_Human_Detection_System
             this.arguments = $"external";
         }
 
-        public void SetPerams(string vfp, string vt, float ar, int vfc, int fsc, bool uhd)
-        {
-            arguments = $"\"{vfp}{vt}{ar}{vfc}{fsc}{uhd}\" external";
-        }
-
         public void SetPerams(string vfp, bool useModel)
         {
-            arguments = $"\"{vfp}{useModel}\" external";
+            arguments = $"\"{vfp},{useModel}\" external";
         }
 
         public string ExecutePythonScript()

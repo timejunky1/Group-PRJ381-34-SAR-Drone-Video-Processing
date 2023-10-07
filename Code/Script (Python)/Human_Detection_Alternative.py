@@ -64,17 +64,18 @@ import json
 import pickle
 import tensorflow as tf
 from tensorflow import keras
-
+from os.path import exists
 if display_output:
     from IPython.display import display, clear_output
     
     
 
 # ## 3. Allow Video Upload:
-
+useModel = True
 if len(sys.argv) > 1:
-    video_file_path = sys.argv[1]
-    useModel = sys.argv[2]
+    video_file_path, useModel = sys.argv[1].split(",")
+    if(useModel == "False"):
+        useModel = False
 else:
     video_file_path = "Alternative_Only_Humans.mp4"  # default path
 
@@ -85,7 +86,6 @@ if os.path.exists(video_file_path):
 else:
     if display_output: print(f"Video file '{video_file_path}' not found!")
     
-display_output = False
 
 # ## 4. Modify Video Length to Account for Minor Inconsistencies:
 
@@ -104,7 +104,7 @@ def masking(img):
         filtered_img = cv2.bitwise_and(rbg_img, rbg_img, mask=mask)
     except:
         filtered_img = img
-        print("Problem")
+        print("Problem with masking")
         
     return filtered_img
 
@@ -122,14 +122,18 @@ def standard_deviation(values):
 def get_equation_value_at_x(x, m, b):
     return m*x+b
 
-def reject_outliers(data):
-    try:
-        data.remove(0)
-    except:
-        print("no zero")
+def reject_outliers(data, height):
+    
+    smoothed_sample = []
     removed_indexes = []
     result = []
     n = len(data)
+    
+    if(n>0):
+        smoothed_sample.append(data[0])
+        for i in range(1, n):
+            smoothed_sample.append((data[i]+data[i-1])/2)
+    
     x = [i for i in range(0, n)]
     if(n>2):
         xy = [x[i] * data[i] for i in range(0, n)]
@@ -137,8 +141,10 @@ def reject_outliers(data):
         m =  ((n*np.sum(xy))-(np.sum(x)*np.sum(data)))/(n*np.sum(x_2)-np.power(np.sum(x),2))
         b = (np.sum(data)-m*np.sum(x))/n
         sd = standard_deviation(data)
+        if(sd>height/4):
+            return [],[],[],[],[]
         for i in range(0, len(data)):
-            if abs(data[i]-get_equation_value_at_x(x[i], m, b))<sd:
+            if abs(data[i]-get_equation_value_at_x(x[i], m, b))<sd/2:
                 result.append(data[i])
             else:
                 removed_indexes.append(i)
@@ -153,10 +159,21 @@ def reject_outliers(data):
         best_fit = data
     f_x = [x for x in x if x not in removed_indexes]
 
-    return result, x, f_x, best_fit,
+    return result, x, f_x, best_fit, smoothed_sample
 
-def get_coordinates(captured_indexes, turn_end_indexes, turn_directions, starting_direction, y_displacements, compretion, height, width):
+def get_coordinates(captured_indexes, turn_end_indexes, turn_directions, starting_direction, y_displacements, compression, height, width):
         turn_index = 0
+        count = 0
+        all_data = [i for i in y_displacements]
+        h_count = 0
+        height = np.max(y_displacements)
+        for i in range(0,len(all_data)):
+            if(all_data[i] == height):
+                h_count += 1
+        for i in range(0,h_count):
+            all_data.remove(height)
+
+        default_step = np.average(all_data)*compression
         x = round(width/2)
         y = round(height/2)
         direction = starting_direction
@@ -164,43 +181,45 @@ def get_coordinates(captured_indexes, turn_end_indexes, turn_directions, startin
         locations = []
         step = 0
         if(display_output == True):
-            plt.figure(figsize=(10,15))
+            plt.figure(figsize=(15,15))
 
         for i in range(0, len(captured_indexes)):
             for t in range(len(turn_end_indexes)-1, -1, -1):
                 if captured_indexes[i] >= turn_end_indexes[t]:
                     turn_index = turn_end_indexes[t]
                     direction = turn_directions[t]
-                    print(f'turn index: {turn_index} direction = {direction} captured index: {captured_indexes[i]}')
+                    if display_output: print(f'turn index: {turn_index} direction = {direction} captured index: {captured_indexes[i]}')
                     break
             last_point = np.max([turn_index, captured_indexes[i-1]])
             sample = y_displacements[last_point: captured_indexes[i]]
-            smoothed_sample, xs, f_x, best_fit  = reject_outliers(sample)
+            filtered_sample, xs, f_x, best_fit, smoothed_sample  = reject_outliers(sample, height)
 
-            if(display_output == True):
-                plt.subplot(5,5,i+1)
-                plt.title(f"{direction}")
+            if(display_output == True and len(xs)>0):
+                count+=1
+                print(filtered_sample)
+                plt.subplot(5,5,count)
+                plt.title(f"Direction: {direction}, n: {len(sample)}")
                 plt.plot(xs, sample)
                 plt.scatter(xs, sample)
-                plt.plot(f_x, smoothed_sample)
-                plt.scatter(f_x, smoothed_sample)
+                plt.plot(f_x, filtered_sample)
+                plt.scatter(f_x, filtered_sample)
                 plt.plot(xs, best_fit)
 
-            if(len(smoothed_sample) > 0):
-                step = np.average(smoothed_sample)*compretion
-                
-                
-            x += (captured_indexes[i] - last_point) * step * direction[0]
-            y += (captured_indexes[i] - last_point) * step * direction[1]
-            #x+=np.sum(best_fit) * direction[0] * compretion
-            #y+=np.sum(best_fit) * direction[1] * compretion
-            print(f"Step: {step}")
-            print(x,y)
+            if(len(sample) > 1 and len(filtered_sample)>0):
+                step = (np.average(filtered_sample) *compression)
+            elif(len(sample)<=1):
+                step = default_step
+            else:
+                step = default_step                  
+            x += ((len(sample)) * step)* direction[0]
+            y += ((len(sample)) * step)* direction[1]
+
             locations.append((x,y))
             directions.append(direction)
             
-        if(display_output == True):    
+        if(display_output == True):
             plt.show()
+            print(f'Turn Change Count: {count}')
 
         return [locations, directions]
 
@@ -261,7 +280,7 @@ def stand_still(past_vals, current_vals):
     return 1
 
 
-def process_pictures(path, compretion, noise_limit, normal_limit, turn_min_frames, flight_directions):
+def process_pictures(path, compression, noise_limit, normal_limit, turn_min_frames, flight_directions):
     
     img = []
     saved_images = {'i':[], 'img':[]}
@@ -285,9 +304,6 @@ def process_pictures(path, compretion, noise_limit, normal_limit, turn_min_frame
     direction = (0,1)
     y_displacements = []
     x_displacements = []
-    old_corner_vals = [[0,0,0],[0,0,0],[0,0,0],[0,0,0]]
-    corner_vals = []
-    moving = 0
     while success: 
         last_img = img
         success, img = vidcap.read()
@@ -302,7 +318,7 @@ def process_pictures(path, compretion, noise_limit, normal_limit, turn_min_frame
             break
         
 
-        resized_img = cv2.resize(img, [round(height/compretion), round(width/compretion)])
+        resized_img = cv2.resize(img, [round(width/compression), round(height/compression)])
         filtered_img = masking(resized_img)
         end_index = np.shape(resized_img)[0]-1
         if(count == 0):
@@ -316,15 +332,12 @@ def process_pictures(path, compretion, noise_limit, normal_limit, turn_min_frame
 
         smoothed_out_locations.append(((lastX + old_lastX)/2,y))
         if(old_start_index != 0):
-            x_displacements.append((lastX + old_lastX)/2)
+            x_displacements.append((lastX + old_lastX + old2_lastX)/2)
         
         y_displacements.append(start_index - old_start_index)
 
         location = (lastX,y) 
         all_locations.append(location)
-        
-        corner_vals = [img[0][0], img[0][1], img[-1][0], img[-1][-1]]
-        moving += stand_still(corner_vals, old_corner_vals)
 
         if(start_index != end_index and old_start_index == 0 and start_index != 0):
             location = (lastX,y)
@@ -361,15 +374,50 @@ def process_pictures(path, compretion, noise_limit, normal_limit, turn_min_frame
         if(start_index == end_index):
             start_index = 0
         
-        old_corner_vals = [img[0][0], img[0][1], img[-1][0], img[-1][-1]]
         old2_lastX = old_lastX
         old_lastX = lastX
         old_start_index = start_index
+
+        if(display_output and count == 31):
+            plt.figure(figsize=(10,10))
+            show_img = cv2.line(filtered_img, (0,old_start_index), (500, old_start_index), (0,250,0), 2)
+            plt.imshow(show_img)
+            
+        if(display_output and count == 31):
+            plt.figure(figsize=(10,10))
+            show_img = filtered_img
+
+        if(display_output and count < 40 and count > 30):
+            show_img = cv2.line(show_img, (0,old_start_index), (500, old_start_index), (0,250,0), 2)
+            plt.imshow(show_img)
+        
+        if(display_output and count == 41):
+            plt.figure(figsize=(10,10))
+            show_img = filtered_img
+            
+        if(display_output and count < 50 and count > 40):
+            show_img = cv2.line(filtered_img, (0,old_start_index), (500, old_start_index), (0,250,0), 2)
+            plt.imshow(show_img)
         
         count += 1
-    print(f'Stand Still: {moving}')
     if(display_output):
-        plt.figure(figsize=(10,100))
+        plt.figure(figsize=(20,10))
+        xs = []
+        ys = []
+        for i in range(0, len(y_displacements)):
+            xs.append(i)
+            ys.append(y_displacements[i])
+        plt.plot(xs,ys)
+        plt.scatter(xs,ys)
+        xs = []
+        ys = []
+        for i in turn_transition_indexes:
+            xs.append(i)
+            ys.append(y_displacements[i])
+        plt.scatter(xs,ys)
+        plt.show()
+
+        plt.figure(figsize=(10,40))
         xs = []
         ys = []
         for i in range(0, len(all_locations)):
@@ -390,6 +438,7 @@ def process_pictures(path, compretion, noise_limit, normal_limit, turn_min_frame
             xs.append(all_locations[i][0])
             ys.append(all_locations[i][1])
         plt.scatter(xs,ys)
+        plt.legend("TE")
         print(len(xs))
         print(len(ys))
         xs = []
@@ -397,19 +446,18 @@ def process_pictures(path, compretion, noise_limit, normal_limit, turn_min_frame
         for i in saved_images['i']:
             xs.append(all_locations[i][0])
             ys.append(all_locations[i][1])
-        plt.plot(xs,ys)
+        plt.scatter(xs,ys)
         xs = []
         ys = []
         for i in turn_transition_indexes:
             xs.append(smoothed_out_locations[i][0])
             ys.append(smoothed_out_locations[i][1])
-        plt.plot(xs,ys)
         plt.scatter(xs,ys)
+        plt.plot(xs,ys)
         plt.show
 
     
-    locations, directions = get_coordinates(saved_images['i'], turn_ends, flight_directions[1:],flight_directions[0], y_displacements, compretion, height, width)
-    print(locations)
+    locations, directions = get_coordinates(saved_images['i'], turn_ends, flight_directions[1:], flight_directions[0], y_displacements, compression, height, width)
 
     if(display_output == True):
         
@@ -434,21 +482,19 @@ turn_directions = []
 try:
     with open("directions.txt") as file:
         for line in file.readlines():
-            turn_directions.append(line.strip()[0,-1])
-
-    with open("directionsres.txt") as file:    
-        file.writelines(turn_directions)
+            turn_directions.append(line[1:-2])
 
     flight_directions = [d.split(",") for d in turn_directions]
-    flight_directions = [(d[0],d[1]) for d in flight_directions]
-    
+    flight_directions = [(int(d[0]),int(d[1])) for d in flight_directions]
 except:
     flight_directions = [(0,1),(-1,0),(0,-1),(-1,0),(0,1)]
+    
 
 with open('progress.txt', 'w') as f:
         f.write('Progress: 0% --Started Processing--')
 
-width, height, captured_frames, locations, frame_directions = process_pictures('Alternative_Only_Humans.mp4', 2, 5, 1, 8,flight_directions)
+display_output = False
+width, height, captured_frames, locations, frame_directions = process_pictures('Alternative_Only_Humans.mp4', 2, 10, 5, 4,flight_directions)
 
 
 # Displaying cropped frames:
@@ -466,12 +512,13 @@ for img in captured_frames:
 total_detected_humans = 0
 
 #fetching human detection model
-try:
-    with open('model.pkl', 'rb') as f:
-        model = pickle.load(f)
-except:
-    print("Can not load machine learning model")
-    useModel = False
+if(useModel):
+    try:
+        with open('model.pkl', 'rb') as f:
+            model = pickle.load(f)
+    except:
+        print("Can not load machine learning model")
+        useModel = False
 
 def Predict(img):
     class_names = ['Human', 'Non Human']
@@ -623,25 +670,20 @@ if display_output: print(f"Map dimensions: Width = {total_width} pixels, Height 
 def draw_section(img, fx, fy, direction):
     top_right_x = round(fx+(direction[1]*(round(width/2)) + direction[0]*(round(height/2))))
     top_right_y = round(fy+(-direction[0]*(round(width/2)) + direction[1]*(round(height/2))))
-    print(f"Cordinates of top right: {top_right_x, top_right_y}")
     top_right_x += x_offset
     top_right_y += y_offset
-    print(f"Pluss offsets: {top_right_x, top_right_y}")
-    print(f"Ordered Y: {total_height-top_right_y}")
     top_right_y = total_height-top_right_y
     if(direction == (0,1)):
         y1 = top_right_y
         y2 = top_right_y+height
         x1 = top_right_x-width
         x2 = top_right_x
-        print(y1,y2,x1,x2)
         map_image[y1:y2, x1: x2] = img
     if(direction == (1,0)):
         y1 = top_right_y-width
         y2 = top_right_y
         x1 = top_right_x-height
         x2 = top_right_x
-        print(y1,y2,x1,x2)
         reconstructed_img = np.zeros((width, height, 3), dtype=np.uint8)
         for y in range(0, height):
             for x in range(0, width):
@@ -653,7 +695,6 @@ def draw_section(img, fx, fy, direction):
         y2 = top_right_y
         x1 = top_right_x
         x2 = top_right_x+width
-        print(y1,y2,x1,x2)
         reconstructed_img = np.zeros((height, width, 3), dtype=np.uint8)
         for y in range(0, height):
             for x in range(0, width):
@@ -665,7 +706,6 @@ def draw_section(img, fx, fy, direction):
         y2 = top_right_y+width
         x1 = top_right_x
         x2 = top_right_x+height
-        print(y1,y2,x1,x2)
         reconstructed_img = np.zeros((width, height, 3), dtype=np.uint8)
         for y in range(0, height):
             for x in range(0, width):
@@ -692,10 +732,20 @@ for i in range(0, len(captured_frames)):
     ##drawwing processed frame on global picture
     draw_section(processed_frame, fx, fy, direction)
 
+f_global_locations = []
+indexes = []
+
 for i in range(0, len(global_locations)):
+    for j in range(i+1, len(global_locations)-1):
+        if(abs(global_locations[i][0]-global_locations[j][0])<200 and abs(global_locations[i][1]-global_locations[j][1])<200):
+            indexes.append(j)
+
+f_global_locations = [global_locations[i] for i in range(0,len(global_locations)) if i not in indexes]
+
+for i in range(0, len(f_global_locations)):
     label = str(i+1)
     text_size = cv2.getTextSize(label, cv2.FONT_HERSHEY_COMPLEX, 5, 2)[0]
-    label_position = (round(global_locations[i][0] + x_offset), total_height-(round(global_locations[i][1] + y_offset)))
+    label_position = (round(f_global_locations[i][0] + x_offset), total_height-(round(f_global_locations[i][1] + y_offset)))
     cv2.putText(map_image, label, label_position, cv2.FONT_HERSHEY_COMPLEX, 5, (0, 255, 0), 2, cv2.LINE_AA)
 
 # ## 14. Reconstruct Entire Map and Convert Bounding Box Coordinates:
@@ -715,12 +765,12 @@ output_text_path = "locations.txt"
 
 if 'external' not in sys.argv:
     # If running in Jupyter, print the output
-    for i, (x,y) in enumerate(global_locations):
+    for i, (x,y) in enumerate(f_global_locations):
         print(f"Human {i + 1} detected with global pixel coordinates: ({x}, {y}).")
 else:
     # If running externally (e.g., from the C# application), write to a file
     with open(output_text_path, 'w') as f:
-        for i, (x,y) in enumerate(global_locations):
+        for i, (x,y) in enumerate(f_global_locations):
             f.write(f"Human {i + 1} detected with global pixel coordinates: ({x}, {y}).\n")
 
 with open('progress.txt', 'w') as f:

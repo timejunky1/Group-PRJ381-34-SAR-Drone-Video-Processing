@@ -53,6 +53,8 @@
             this.back = new System.Windows.Forms.RadioButton();
             this.forward = new System.Windows.Forms.RadioButton();
             this.left = new System.Windows.Forms.RadioButton();
+            this.radioButton1 = new System.Windows.Forms.RadioButton();
+            this.button2 = new System.Windows.Forms.Button();
             ((System.ComponentModel.ISupportInitialize)(this.pictureBox1)).BeginInit();
             this.groupBox1.SuspendLayout();
             this.groupBox2.SuspendLayout();
@@ -160,6 +162,7 @@
             // 
             // groupBox1
             // 
+            this.groupBox1.Controls.Add(this.radioButton1);
             this.groupBox1.Controls.Add(this.lblVideo);
             this.groupBox1.Controls.Add(this.label5);
             this.groupBox1.Controls.Add(this.button1);
@@ -268,7 +271,7 @@
             this.lblProcessing.AutoSize = true;
             this.lblProcessing.Font = new System.Drawing.Font("Microsoft Sans Serif", 9.75F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
             this.lblProcessing.ForeColor = System.Drawing.Color.Red;
-            this.lblProcessing.Location = new System.Drawing.Point(56, 277);
+            this.lblProcessing.Location = new System.Drawing.Point(9, 278);
             this.lblProcessing.Name = "lblProcessing";
             this.lblProcessing.Size = new System.Drawing.Size(420, 16);
             this.lblProcessing.TabIndex = 20;
@@ -344,12 +347,39 @@
             this.left.UseVisualStyleBackColor = true;
             this.left.CheckedChanged += new System.EventHandler(this.left_CheckedChanged);
             // 
+            // radioButton1
+            // 
+            this.radioButton1.AutoSize = true;
+            this.radioButton1.ForeColor = System.Drawing.Color.White;
+            this.radioButton1.Location = new System.Drawing.Point(101, 111);
+            this.radioButton1.Name = "radioButton1";
+            this.radioButton1.Size = new System.Drawing.Size(102, 17);
+            this.radioButton1.TabIndex = 23;
+            this.radioButton1.TabStop = true;
+            this.radioButton1.Text = "Dont Use Model";
+            this.radioButton1.UseVisualStyleBackColor = true;
+            this.radioButton1.CheckedChanged += new System.EventHandler(this.radioButton1_CheckedChanged);
+            // 
+            // button2
+            // 
+            this.button2.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(64)))), ((int)(((byte)(64)))), ((int)(((byte)(64)))));
+            this.button2.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
+            this.button2.ForeColor = System.Drawing.Color.White;
+            this.button2.Location = new System.Drawing.Point(462, 278);
+            this.button2.Name = "button2";
+            this.button2.Size = new System.Drawing.Size(68, 32);
+            this.button2.TabIndex = 22;
+            this.button2.Text = "Refresh";
+            this.button2.UseVisualStyleBackColor = false;
+            this.button2.Click += new System.EventHandler(this.button2_Click);
+            // 
             // Form2
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
             this.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(32)))), ((int)(((byte)(32)))), ((int)(((byte)(32)))));
             this.ClientSize = new System.Drawing.Size(620, 322);
+            this.Controls.Add(this.button2);
             this.Controls.Add(this.desclabel);
             this.Controls.Add(this.groupBox2);
             this.Controls.Add(this.lblProcessing);
@@ -399,5 +429,7 @@
         private System.Windows.Forms.RadioButton back;
         private System.Windows.Forms.RadioButton forward;
         private System.Windows.Forms.RadioButton left;
+        private System.Windows.Forms.RadioButton radioButton1;
+        private System.Windows.Forms.Button button2;
     }
 }

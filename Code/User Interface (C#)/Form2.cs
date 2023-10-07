@@ -110,6 +110,7 @@ namespace Infrared_Drone_Human_Detection_System
             btnRemove.Enabled= false;
             button1.Enabled= false;
             lblProcessing.Visible = true;
+            desclabel.Visible = true;
 
             useModel = rbUseModel.Checked;
             string peramsOutputPath = "directions.txt";
@@ -158,13 +159,8 @@ namespace Infrared_Drone_Human_Detection_System
             // Check for any errors from the Python script
             if (!string.IsNullOrEmpty(scriptOutput))
             {
-                using (FileStream stream = new FileStream("scriptOutput", FileMode.Create))
-                {
-                    using (StreamWriter sw = new StreamWriter(stream))
-                    {
-                        sw.WriteLine(scriptOutput);
-                    }
-                }
+                MessageBox.Show(scriptOutput);
+                return;
             }
 
             // Existing code for retrieving output from the Python script
@@ -215,6 +211,7 @@ namespace Infrared_Drone_Human_Detection_System
             if (comboBox1.SelectedIndex == 0)
             {
                 se.setpath("Human_Detection_Script.py");
+                desclabel.Visible = true;
                 btnAdd.Enabled = false;
                 btnRemove.Enabled = false;
                 listBox1.Enabled= false;
@@ -233,6 +230,7 @@ namespace Infrared_Drone_Human_Detection_System
                 forward.Enabled = true;
                 right.Enabled = true;
                 back.Enabled = true;
+                desclabel.Visible = false;
             }
         }
 
@@ -310,6 +308,24 @@ namespace Infrared_Drone_Human_Detection_System
             lblDirection.ForeColor = Color.Green;
             direction = "(-1,0)";
             lblDirection.Text = direction;
+        }
+
+        private void radioButton1_CheckedChanged(object sender, EventArgs e)
+        {
+
+        }
+
+        private void button2_Click(object sender, EventArgs e)
+        {
+            btnProcess.Enabled = true;
+            btnProcess.Visible = true;
+            comboBox1.Enabled = true;
+            rbUseModel.Enabled = true;
+            btnAdd.Enabled = true;
+            btnRemove.Enabled = true;
+            button1.Enabled = true;
+            lblProcessing.Visible = false;
+            desclabel.Visible = false;
         }
     }
 }
